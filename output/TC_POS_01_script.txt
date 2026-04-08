@@ -1,0 +1,6 @@
+import { test, expect } from '@playwright/test';
+
+test('Verify successful action', async ({ page }) => {
+  await page.goto('/');
+  // TODO: Add steps
+});
