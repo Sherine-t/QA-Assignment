@@ -147,6 +147,11 @@ body {
   color: #a5b4fc;
 }
 
+.status-badge.status-pass {
+  background: rgba(34, 197, 94, 0.2);
+  color: #86efac;
+}
+
 .meta-info {
   display: flex;
   gap: 1.5rem;

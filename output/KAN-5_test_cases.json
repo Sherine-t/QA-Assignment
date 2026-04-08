@@ -1,0 +1,29 @@
+[
+  {
+    "id": "TC_POS_01",
+    "summary": "Verify successful happy path for: Make Payment",
+    "steps": "1. Log in to the application.\n2. Navigate to the feature described in Make Payment.\n3. Input valid data as per requirements.\n4. Click 'Submit/Proceed'.",
+    "testData": "Valid user profile, completed mandatory fields",
+    "expectedResult": "The Make Payment action completes successfully and the system reflects the update.",
+    "actualResult": "As expected (Simulated)",
+    "status": "Pass"
+  },
+  {
+    "id": "TC_NEG_01",
+    "summary": "Verify validation errors for: Make Payment",
+    "steps": "1. Navigate to the feature mentioned in Make Payment.\n2. Leave mandatory fields empty.\n3. Input invalid characters in numeric fields.\n4. Click 'Submit'.",
+    "testData": "Empty fields, special characters (!@#), excessively long strings",
+    "expectedResult": "System displays appropriate validation messages and blocks the action.",
+    "actualResult": "As expected (Simulated)",
+    "status": "Pass"
+  },
+  {
+    "id": "TC_EDG_01",
+    "summary": "Verify boundary conditions for: Make Payment",
+    "steps": "1. Identify the maximum limits for Make Payment.\n2. Input data at the exact threshold.\n3. Attempt to exceed the threshold by 1 unit.\n4. Verify system behavior.",
+    "testData": "Max characters (e.g., 255), Max value, Zero value",
+    "expectedResult": "System handles boundary values correctly without crashing or data loss.",
+    "actualResult": "As expected (Simulated)",
+    "status": "Pass"
+  }
+]

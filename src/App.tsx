@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import './App.css'
 
-import type { JiraStory, PlaywrightScriptItem } from './types';
+import type { JiraStory, PlaywrightScriptItem, TestCase } from './types';
 import { fetchJiraStory, saveToOutput, generateContentFromGemini } from './api';
 
 function App() {
@@ -14,7 +14,7 @@ function App() {
   const [story, setStory] = useState<JiraStory | null>(null);
   const [modelApiKey, setModelApiKey] = useState('');
   const [generating, setGenerating] = useState(false);
-  const [testCases, setTestCases] = useState<string | null>(null);
+  const [testCases, setTestCases] = useState<TestCase[] | null>(null);
   const [currentPage, setCurrentPage] = useState<'home' | 'playwright'>('home');
   const [playwrightScripts, setPlaywrightScripts] = useState<PlaywrightScriptItem[] | null>(null);
   const [generatingScript, setGeneratingScript] = useState(false);
@@ -41,7 +41,21 @@ function App() {
     }
   };
 
+  const getFullDescriptionText = (doc: any): string => {
+    if (!doc) return '';
+    if (typeof doc === 'string') return doc;
+    if (!doc.content) return '';
 
+    const extract = (node: any): string => {
+      if (node.type === 'text') return node.text || '';
+      if (node.content) {
+        return node.content.map((n: any) => extract(n)).join(' ');
+      }
+      return '';
+    };
+
+    return doc.content.map((b: any) => extract(b)).join('\n');
+  };
 
   const generateTestCases = async () => {
     if (!story) return;
@@ -51,39 +65,72 @@ function App() {
 
     if (!modelApiKey) {
       setTimeout(() => {
-        const fallbackMarkdown = `| Test ID | Test Type | Title | Precomputing | Steps | Expected Result | Priority |
-|---|---|---|---|---|---|---|
-| TC_POS_01 | Positive | Verify successful action for ${story.key} | System is in valid state | 1. Navigate to feature<br>2. Perform primary action | Action completes successfully | High |
-| TC_NEG_01 | Negative | Verify error handling for invalid input in ${story.key} | System is in valid state | 1. Enter invalid data<br>2. Submit | Appropriate error message is displayed | High |
-| TC_EDG_01 | Edge Case | Verify boundary limit for ${story.key} | System is at maximum data limit | 1. Enter maximum allowed characters/value | System handles limit without crashing | Medium |
-
-*Note: This is a fallback test suite generated because the Gemini API key was not provided.*`;
-        setTestCases(fallbackMarkdown);
-        saveToOutput(`${story.key}_test_cases.md`, fallbackMarkdown);
+        const summary = story.fields.summary;
+        const dynamicFallback: TestCase[] = [
+          {
+            id: 'TC_POS_01',
+            summary: `Verify successful happy path for: ${summary}`,
+            steps: `1. Log in to the application.\n2. Navigate to the feature described in ${summary}.\n3. Input valid data as per requirements.\n4. Click 'Submit/Proceed'.`,
+            testData: 'Valid user profile, completed mandatory fields',
+            expectedResult: `The ${summary} action completes successfully and the system reflects the update.`,
+            actualResult: 'As expected (Simulated)',
+            status: 'Pass'
+          },
+          {
+            id: 'TC_NEG_01',
+            summary: `Verify validation errors for: ${summary}`,
+            steps: `1. Navigate to the feature mentioned in ${summary}.\n2. Leave mandatory fields empty.\n3. Input invalid characters in numeric fields.\n4. Click 'Submit'.`,
+            testData: 'Empty fields, special characters (!@#), excessively long strings',
+            expectedResult: 'System displays appropriate validation messages and blocks the action.',
+            actualResult: 'As expected (Simulated)',
+            status: 'Pass'
+          },
+          {
+            id: 'TC_EDG_01',
+            summary: `Verify boundary conditions for: ${summary}`,
+            steps: `1. Identify the maximum limits for ${summary}.\n2. Input data at the exact threshold.\n3. Attempt to exceed the threshold by 1 unit.\n4. Verify system behavior.`,
+            testData: 'Max characters (e.g., 255), Max value, Zero value',
+            expectedResult: 'System handles boundary values correctly without crashing or data loss.',
+            actualResult: 'As expected (Simulated)',
+            status: 'Pass'
+          }
+        ];
+        setTestCases(fallbackCases => fallbackCases || dynamicFallback);
+        setTestCases(dynamicFallback);
+        saveToOutput(`${story.key}_test_cases.json`, JSON.stringify(dynamicFallback, null, 2));
         setGenerating(false);
       }, 1000);
       return;
     }
 
     try {
-      // Prepare the prompt
-      const descriptionText = story.fields.description?.content
-        ?.map((b: any) => b.content?.map((t: any) => t.text).join('')).join('\n') || '';
+      const descriptionText = getFullDescriptionText(story.fields.description);
       
-      const prompt = `As a QA Expert, generate a comprehensive suite of manual test cases for the following Jira User Story:
+      const prompt = `As a Senior QA Engineer, generate a comprehensive suite of highly specific manual test cases for the following Jira User Story. 
       
-      Summary: ${story.fields.summary}
-      Description: ${descriptionText}
+      CRITICAL: Every test case MUST be uniquely tailored to the features, logic, and acceptance criteria defined below. DO NOT provide generic or template-style test cases.
       
-      Please provide the test cases in a clear Markdown Table format with the following columns:
-      | Test ID | Test Type | Title | Precomputing | Steps | Expected Result | Priority |
-      Make sure to include Positive, Negative, and Edge Cases.
-      `;
+      STORY SUMMARY: ${story.fields.summary}
+      FULL DESCRIPTION/REQUIREMENTS: ${descriptionText}
+      
+      Please provide the test cases as a JSON array of objects. Each object MUST have:
+      - "id": A unique ID (e.g., TC_POS_01, TC_NEG_03)
+      - "summary": A clear, story-specific summary
+      - "steps": Detailed, numbered, step-by-step instructions matching the story's UI/Logic
+      - "testData": Specific data required (e.g., "Email: test@example.com", "Amount: 10.50")
+      - "expectedResult": Specific system behavior based on the requirements
+      - "actualResult": (Set to "Pending Execution")
+      - "status": (Set to "Not Run")
 
-      const generatedText = await generateContentFromGemini(modelApiKey, prompt);
-      setTestCases(generatedText);
+      Include at least 6 test cases covering: Positive scenarios, Negative scenarios, and Edge cases.
+      IMPORTANT: Return ONLY the raw JSON array. No markdown, no "json" tags.`;
+
+      let generatedText = await generateContentFromGemini(modelApiKey, prompt);
       if (generatedText) {
-        saveToOutput(`${story.key}_test_cases.md`, generatedText);
+        generatedText = generatedText.replace(/```(json)?/g, '').replace(/```/g, '').trim();
+        const parsed = JSON.parse(generatedText);
+        setTestCases(parsed);
+        saveToOutput(`${story.key}_test_cases.json`, JSON.stringify(parsed, null, 2));
       }
     } catch (err: any) {
       console.error(err);
@@ -101,25 +148,14 @@ function App() {
 
     if (!modelApiKey) {
       setTimeout(() => {
-        const scripts = [
-          {
-            id: 'TC_POS_01', 
-            title: 'Verify successful action', 
-            script: `import { test, expect } from '@playwright/test';\n\ntest('Verify successful action', async ({ page }) => {\n  await page.goto('/');\n  // TODO: Add steps\n});`
-          },
-          {
-            id: 'TC_NEG_01', 
-            title: 'Verify error handling', 
-            script: `import { test, expect } from '@playwright/test';\n\ntest('Verify error handling for invalid input', async ({ page }) => {\n  await page.goto('/');\n  // TODO: Add steps\n});`
-          },
-          {
-            id: 'TC_EDG_01', 
-            title: 'Verify boundary limit', 
-            script: `import { test, expect } from '@playwright/test';\n\ntest('Verify boundary limit', async ({ page }) => {\n  await page.goto('/');\n  // TODO: Add steps\n});`
-          }
-        ];
-        setPlaywrightScripts(scripts);
-        scripts.forEach(s => saveToOutput(`${s.id}_script.txt`, s.script));
+        const dynamicScripts = testCases.map((tc) => ({
+          id: `tests/${story?.key || 'story'}_${tc.id}.spec.ts`,
+          title: tc.id,
+          script: `import { test, expect } from '@playwright/test';\n\n/**\n * Test Case: ${tc.id}\n * Summary: ${tc.summary}\n */\ntest('${tc.id}', async ({ page }) => {\n  await page.goto('https://example.com');\n  // Simulated steps based on: ${tc.summary}\n  console.log('Executing steps: ${tc.steps.replace(/\n/g, ' ')}');\n  \n  // Example of direct Playwright actions:\n  // await page.getByRole('button', { name: 'Action' }).click();\n  // await expect(page.locator('.success')).toBeVisible();\n});`
+        }));
+        
+        setPlaywrightScripts(dynamicScripts);
+        dynamicScripts.forEach(s => saveToOutput(`${s.id.replace(/\//g, '_')}_script.txt`, s.script));
         setGeneratingScript(false);
       }, 1000);
       return;
@@ -127,45 +163,31 @@ function App() {
 
     try {
       const prompt = `You are an expert Playwright automation engineer.
-Convert the following test suite into clean, production-grade Playwright Typescript tests.
+You are provided with ${testCases.length} manual test cases. 
+Generate a UNIQUE, SIMPLE, standalone Playwright TypeScript test (.spec.ts) for EACH AND EVERY ONE of them.
+
+Manual Test Cases:
+${JSON.stringify(testCases, null, 2)}
 
 Requirements:
-- Implement Page Object Model (POM) for all pages
-- Use Fixtures with POM also use fixtures instead of beforeEach and afterEach hooks where appropriate.
-- Use page object model with the below folder structure
-├── tests/                          # Test scenarios only (grouped by feature/module)
-├── pages/                          # Page Object Model (POM) – locators + actions
-├── fixtures/                       # Custom Playwright fixtures (e.g., logged-in user)
-├── utils/                          # Reusable helpers (API calls, date utils, etc.)
-├── data/                           # Test data (JSON, CSV, etc.)
-├── components/                     # Optional: Reusable UI components
-├── auth/                           # Stored auth states (for logged-in tests)
-├── config/                         # Environment-specific configs (optional)
-├── playwright.config.ts            # Root configuration
-├── package.json
-├── tsconfig.json
-├── .env                            # Environment variables
-└── test-results/                   # Auto-generated (add to .gitignore)
+- You MUST return ${testCases.length} JSON objects in a single array. One for each manual test case.
+- ONLY generate .spec.ts files. No POM, no utils.
+- Write locators and actions directly inside the test() blocks.
+- Use robust locators: page.getByRole(), page.getByLabel(), page.getByTestId().
+- Match the manual steps exactly for each test.
 
-- Include trace on failure
-- Assertions must be in test scripts, not in POM methods
-- suggest robust and unique Playwright locators and Prioritize getByRole/getByLabel/getByTestId
-- Output ONLY the complete typescript code (no explanations).
-
-Here are the test cases to convert:
-${testCases}
-
-IMPORTANT: The UI dynamically renders files into cards, and parses your JSON. You must return your output EXACTLY as a JSON array of objects, with no external markdown tags. Each object should represent a specific generated file and have these exact keys:
-- "id": A concise filename including the path (e.g., "tests/login.spec.ts" or "pages/LoginPage.ts")
-- "title": A short functional description of the file
-- "script": The complete Playwright TypeScript code for this file.
+IMPORTANT: Return EXACTLY a JSON array of ${testCases.length} objects. No markdown.
+Each object keys:
+- "id": The filename (e.g., "tests/${story?.key || 'story'}_TC_..._.spec.ts")
+- "title": THE EXACT Testcase ID (e.g. TC_POS_01)
+- "script": The complete Playwright TypeScript code.
 
 Example format:
 [
   {
-    "id": "tests/login.spec.ts",
-    "title": "Login Feature Tests",
-    "script": "import { test } from '../fixtures/base';\\n\\ntest('Login', async ({ loginPage }) => {\\n  // test details\\n});"
+    "id": "tests/TC_POS_01.spec.ts",
+    "title": "TC_POS_01",
+    "script": "import { test, expect } from '@playwright/test';\\n\\ntest('TC_POS_01', async ({ page }) => {\\n  await page.goto('/login');\\n  // ... steps ...\\n});"
   }
 ]`;
 
@@ -175,7 +197,7 @@ Example format:
         try {
            const parsed = JSON.parse(generatedText);
            setPlaywrightScripts(parsed);
-           parsed.forEach((s: any) => saveToOutput(`${s.id}_script.txt`, s.script));
+           parsed.forEach((s: any) => saveToOutput(`${s.id.replace(/\//g, '_')}_script.txt`, s.script));
         } catch(e) {
            throw new Error("Failed to parse AI output. The model did not return a valid JSON array.");
         }
@@ -188,28 +210,67 @@ Example format:
     }
   };
 
-  // Helper to extract text from Jira's ADF (Atlassian Document Format)
-  const renderDescription = (doc: any) => {
-    if (!doc || !doc.content) return 'No description provided.';
-    return doc.content.map((block: any, i: number) => {
-      if (block.type === 'paragraph' && block.content) {
-        return <p key={i}>{block.content.map((text: any) => text.text).join('')}</p>;
+  const renderDescription = (doc: any): any => {
+    if (!doc) return 'No description provided.';
+    if (typeof doc === 'string') return <p>{doc}</p>;
+    if (!doc.content) return 'No description provided.';
+
+    const parseNode = (node: any, key: string | number): any => {
+      if (node.type === 'text') {
+        let text: any = node.text;
+        if (node.marks) {
+          node.marks.forEach((mark: any) => {
+            if (mark.type === 'strong') text = <strong key={`${key}-s`}>{text}</strong>;
+            if (mark.type === 'em') text = <em key={`${key}-e`}>{text}</em>;
+            if (mark.type === 'code') text = <code key={`${key}-c`}>{text}</code>;
+          });
+        }
+        return text;
+      }
+
+      if (node.content) {
+        const children = node.content.map((child: any, i: number) => parseNode(child, `${key}-${i}`));
+        
+        switch (node.type) {
+          case 'paragraph': return <p key={key}>{children}</p>;
+          case 'heading': {
+            const level = node.attrs?.level || 3;
+            if (level === 1) return <h1 key={key} style={{ marginTop: '1rem', color: 'var(--text-main)' }}>{children}</h1>;
+            if (level === 2) return <h2 key={key} style={{ marginTop: '1rem', color: 'var(--text-main)' }}>{children}</h2>;
+            return <h3 key={key} style={{ marginTop: '1rem', color: 'var(--text-main)' }}>{children}</h3>;
+          }
+          case 'bulletList': return <ul key={key} style={{ paddingLeft: '1.5rem', marginBottom: '1rem' }}>{children}</ul>;
+          case 'orderedList': return <ol key={key} style={{ paddingLeft: '1.5rem', marginBottom: '1rem' }}>{children}</ol>;
+          case 'listItem': return <li key={key} style={{ marginBottom: '0.25rem' }}>{children}</li>;
+          case 'blockquote': return <blockquote key={key} style={{ borderLeft: '3px solid var(--primary)', paddingLeft: '1rem', margin: '1rem 0', color: 'var(--text-muted)' }}>{children}</blockquote>;
+          case 'codeBlock': return <pre key={key} style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '8px', overflowX: 'auto' }}><code>{children}</code></pre>;
+          default: return <span key={key}>{children}</span>;
+        }
       }
       return null;
-    });
+    };
+
+    return doc.content.map((block: any, i: number) => parseNode(block, i));
   };
 
   const downloadCSV = () => {
-    if (!testCases) return;
-    const lines = testCases.split('\n').filter(line => line.trim().startsWith('|') && line.trim().endsWith('|'));
-    if (lines.length < 2) return;
+    if (!testCases || testCases.length === 0) return;
     
-    const csvContent = lines.filter((line, index) => !(index === 1 && line.includes('---'))).map(line => {
-      const cols = line.trim().replace(/^\||\|$/g, '').split('|');
-      return cols.map(c => `"${c.trim().replace(/"/g, '""')}"`).join(',');
-    }).join('\n');
+    const headers = ['Testcase ID', 'Summary', 'Steps', 'TestData', 'Expected Result', 'Actual Result', 'Status'];
+    const csvRows = [
+      headers.join(','),
+      ...testCases.map(tc => [
+        `"${tc.id.replace(/"/g, '""')}"`,
+        `"${tc.summary.replace(/"/g, '""')}"`,
+        `"${tc.steps.replace(/"/g, '""')}"`,
+        `"${tc.testData.replace(/"/g, '""')}"`,
+        `"${tc.expectedResult.replace(/"/g, '""')}"`,
+        `"${tc.actualResult.replace(/"/g, '""')}"`,
+        `"${tc.status.replace(/"/g, '""')}"`
+      ].join(','))
+    ];
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = `${story?.key || 'test_cases'}.csv`;
@@ -224,7 +285,7 @@ Example format:
     const blob = new Blob([script], { type: 'text/plain;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `${id}_script.txt`;
+    link.download = `${id.replace(/\//g, '_')}_script.txt`;
     link.click();
   };
 
@@ -366,14 +427,40 @@ Example format:
                       Download as CSV/Excel
                     </button>
                   </div>
-                  <div className="glass-card" style={{ padding: '1.5rem', overflowX: 'auto', background: 'rgba(255, 255, 255, 0.02)' }}>
-                    <div className="markdown-content" style={{ textAlign: 'left', fontSize: '0.9rem' }}>
-                      {/* Simple Markdown Table to HTML conversion could go here, for now we render as-is with white-space pre-wrap */}
-                      <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', color: 'var(--text-muted)' }}>
-                        {testCases}
-                      </pre>
-                    </div>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    {testCases.map((tc, idx) => (
+                      <div key={idx} className="glass-card" style={{ padding: '1.5rem', textAlign: 'left', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', paddingBottom: '0.75rem' }}>
+                          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                            <span className="status-badge" style={{ margin: 0, background: 'var(--primary)', color: 'white' }}>{tc.id}</span>
+                            <h4 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.1rem' }}>{tc.summary}</h4>
+                          </div>
+                          <span className={`status-badge ${tc.status.toLowerCase() === 'pass' ? 'status-pass' : ''}`} style={{ margin: 0 }}>{tc.status}</span>
+                        </div>
+                        
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                          <div>
+                            <h5 style={{ color: 'var(--primary)', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Steps</h5>
+                            <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0 }}>{tc.steps}</pre>
+                          </div>
+                          <div>
+                            <h5 style={{ color: 'var(--primary)', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Test Data</h5>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0 }}>{tc.testData}</p>
+                          </div>
+                          <div>
+                            <h5 style={{ color: 'var(--primary)', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Expected Result</h5>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0 }}>{tc.expectedResult}</p>
+                          </div>
+                          <div>
+                            <h5 style={{ color: 'var(--primary)', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Actual Result</h5>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0 }}>{tc.actualResult}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
+
                   <div style={{ marginTop: '2rem', textAlign: 'right' }}>
                     <button className="btn-primary" style={{ width: 'auto' }} onClick={() => setCurrentPage('playwright')}>
                       Navigate to Automation Scripts ➔

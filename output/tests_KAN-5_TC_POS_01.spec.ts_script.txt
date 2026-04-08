@@ -1,0 +1,15 @@
+import { test, expect } from '@playwright/test';
+
+/**
+ * Test Case: TC_POS_01
+ * Summary: Verify successful happy path for: Make Payment
+ */
+test('TC_POS_01', async ({ page }) => {
+  await page.goto('https://example.com');
+  // Simulated steps based on: Verify successful happy path for: Make Payment
+  console.log('Executing steps: 1. Log in to the application. 2. Navigate to the feature described in Make Payment. 3. Input valid data as per requirements. 4. Click 'Submit/Proceed'.');
+  
+  // Example of direct Playwright actions:
+  // await page.getByRole('button', { name: 'Action' }).click();
+  // await expect(page.locator('.success')).toBeVisible();
+});

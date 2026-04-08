@@ -18,6 +18,16 @@ export interface JiraStory {
   };
 }
 
+export interface TestCase {
+  id: string;
+  summary: string;
+  steps: string;
+  testData: string;
+  expectedResult: string;
+  actualResult: string;
+  status: string;
+}
+
 export interface PlaywrightScriptItem {
   id: string;
   title: string;

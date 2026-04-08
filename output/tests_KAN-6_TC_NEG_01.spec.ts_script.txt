@@ -1,0 +1,15 @@
+import { test, expect } from '@playwright/test';
+
+/**
+ * Test Case: TC_NEG_01
+ * Summary: Verify validation errors for: As a new user, I want to register on the e-commerce platform so that I can purchase products and track my orders.
+ */
+test('TC_NEG_01', async ({ page }) => {
+  await page.goto('https://example.com');
+  // Simulated steps based on: Verify validation errors for: As a new user, I want to register on the e-commerce platform so that I can purchase products and track my orders.
+  console.log('Executing steps: 1. Navigate to the feature mentioned in As a new user, I want to register on the e-commerce platform so that I can purchase products and track my orders.. 2. Leave mandatory fields empty. 3. Input invalid characters in numeric fields. 4. Click 'Submit'.');
+  
+  // Example of direct Playwright actions:
+  // await page.getByRole('button', { name: 'Action' }).click();
+  // await expect(page.locator('.success')).toBeVisible();
+});

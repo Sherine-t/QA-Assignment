@@ -1,0 +1,15 @@
+import { test, expect } from '@playwright/test';
+
+/**
+ * Test Case: TC_EDG_01
+ * Summary: Verify boundary conditions for: Make Payment
+ */
+test('TC_EDG_01', async ({ page }) => {
+  await page.goto('https://example.com');
+  // Simulated steps based on: Verify boundary conditions for: Make Payment
+  console.log('Executing steps: 1. Identify the maximum limits for Make Payment. 2. Input data at the exact threshold. 3. Attempt to exceed the threshold by 1 unit. 4. Verify system behavior.');
+  
+  // Example of direct Playwright actions:
+  // await page.getByRole('button', { name: 'Action' }).click();
+  // await expect(page.locator('.success')).toBeVisible();
+});

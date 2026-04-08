@@ -1,0 +1,8 @@
+import { test, expect } from '@playwright/test';
+
+test('Verify error handling', async ({ page }) => {
+  await page.goto('https://example.com');
+  await page.getByRole('button', { name: 'Submit' }).click();
+  await expect(page.getByText('Error')).toBeVisible();
+  // Generated based on: Verify validation errors for: Make Payment
+});

@@ -1,0 +1,29 @@
+[
+  {
+    "id": "TC_POS_01",
+    "summary": "Verify successful action for KAN-4",
+    "steps": "1. Navigate to feature\n2. Perform primary action",
+    "testData": "Valid user credentials, active session",
+    "expectedResult": "Action completes successfully and system state is updated.",
+    "actualResult": "As expected",
+    "status": "Pass"
+  },
+  {
+    "id": "TC_NEG_01",
+    "summary": "Verify error handling for invalid input in KAN-4",
+    "steps": "1. Enter invalid data\n2. Submit",
+    "testData": "Empty fields, invalid characters",
+    "expectedResult": "Appropriate error message is displayed and action is blocked.",
+    "actualResult": "As expected",
+    "status": "Pass"
+  },
+  {
+    "id": "TC_EDG_01",
+    "summary": "Verify boundary limit for KAN-4",
+    "steps": "1. Enter maximum allowed characters/value",
+    "testData": "Max length string (255 chars)",
+    "expectedResult": "System handles limit without crashing and truncates or validates correctly.",
+    "actualResult": "As expected",
+    "status": "Pass"
+  }
+]

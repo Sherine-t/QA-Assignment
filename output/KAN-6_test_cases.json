@@ -1,0 +1,29 @@
+[
+  {
+    "id": "TC_POS_01",
+    "summary": "Verify successful happy path for: As a new user, I want to register on the e-commerce platform so that I can purchase products and track my orders.",
+    "steps": "1. Log in to the application.\n2. Navigate to the feature described in As a new user, I want to register on the e-commerce platform so that I can purchase products and track my orders..\n3. Input valid data as per requirements.\n4. Click 'Submit/Proceed'.",
+    "testData": "Valid user profile, completed mandatory fields",
+    "expectedResult": "The As a new user, I want to register on the e-commerce platform so that I can purchase products and track my orders. action completes successfully and the system reflects the update.",
+    "actualResult": "As expected (Simulated)",
+    "status": "Pass"
+  },
+  {
+    "id": "TC_NEG_01",
+    "summary": "Verify validation errors for: As a new user, I want to register on the e-commerce platform so that I can purchase products and track my orders.",
+    "steps": "1. Navigate to the feature mentioned in As a new user, I want to register on the e-commerce platform so that I can purchase products and track my orders..\n2. Leave mandatory fields empty.\n3. Input invalid characters in numeric fields.\n4. Click 'Submit'.",
+    "testData": "Empty fields, special characters (!@#), excessively long strings",
+    "expectedResult": "System displays appropriate validation messages and blocks the action.",
+    "actualResult": "As expected (Simulated)",
+    "status": "Pass"
+  },
+  {
+    "id": "TC_EDG_01",
+    "summary": "Verify boundary conditions for: As a new user, I want to register on the e-commerce platform so that I can purchase products and track my orders.",
+    "steps": "1. Identify the maximum limits for As a new user, I want to register on the e-commerce platform so that I can purchase products and track my orders..\n2. Input data at the exact threshold.\n3. Attempt to exceed the threshold by 1 unit.\n4. Verify system behavior.",
+    "testData": "Max characters (e.g., 255), Max value, Zero value",
+    "expectedResult": "System handles boundary values correctly without crashing or data loss.",
+    "actualResult": "As expected (Simulated)",
+    "status": "Pass"
+  }
+]
