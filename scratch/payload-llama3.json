@@ -1,0 +1,1 @@
+{ "url": "http://127.0.0.1:11434/api/chat", "method": "POST", "headers": {}, "auth": "", "data": { "model": "llama3", "stream": false, "messages": [ { "role": "user", "content": "hello" } ] } }

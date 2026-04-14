@@ -2,7 +2,7 @@ import { useState } from 'react'
 import './App.css'
 
 import type { JiraStory, PlaywrightScriptItem, TestCase } from './types';
-import { fetchJiraStory, saveToOutput, generateContentFromGemini } from './api';
+import { fetchJiraStory, saveToOutput, generateContentFromOpenRouter } from './api';
 
 function App() {
   const [url, setUrl] = useState('');
@@ -13,6 +13,7 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [story, setStory] = useState<JiraStory | null>(null);
   const [modelApiKey, setModelApiKey] = useState('');
+  const [routerModel, setRouterModel] = useState('openai/gpt-3.5-turbo');
   const [generating, setGenerating] = useState(false);
   const [testCases, setTestCases] = useState<TestCase[] | null>(null);
   const [currentPage, setCurrentPage] = useState<'home' | 'playwright'>('home');
@@ -125,9 +126,14 @@ function App() {
       Include at least 6 test cases covering: Positive scenarios, Negative scenarios, and Edge cases.
       IMPORTANT: Return ONLY the raw JSON array. No markdown, no "json" tags.`;
 
-      let generatedText = await generateContentFromGemini(modelApiKey, prompt);
+      let generatedText = await generateContentFromOpenRouter(modelApiKey, routerModel, prompt);
       if (generatedText) {
         generatedText = generatedText.replace(/```(json)?/g, '').replace(/```/g, '').trim();
+        const startIndex = generatedText.indexOf('[');
+        const endIndex = generatedText.lastIndexOf(']');
+        if (startIndex !== -1 && endIndex !== -1) {
+          generatedText = generatedText.substring(startIndex, endIndex + 1);
+        }
         const parsed = JSON.parse(generatedText);
         setTestCases(parsed);
         saveToOutput(`${story.key}_test_cases.json`, JSON.stringify(parsed, null, 2));
@@ -155,7 +161,7 @@ function App() {
         }));
         
         setPlaywrightScripts(dynamicScripts);
-        dynamicScripts.forEach(s => saveToOutput(`${s.id.replace(/\//g, '_')}_script.txt`, s.script));
+        dynamicScripts.forEach(s => saveToOutput(`${s.id.split('/').pop()}`, s.script));
         setGeneratingScript(false);
       }, 1000);
       return;
@@ -191,13 +197,18 @@ Example format:
   }
 ]`;
 
-      let generatedText = await generateContentFromGemini(modelApiKey, prompt);
+      let generatedText = await generateContentFromOpenRouter(modelApiKey, routerModel, prompt);
       if (generatedText) {
         generatedText = generatedText.replace(/```(json)?/g, '').replace(/```/g, '').trim();
+        const startIndex = generatedText.indexOf('[');
+        const endIndex = generatedText.lastIndexOf(']');
+        if (startIndex !== -1 && endIndex !== -1) {
+          generatedText = generatedText.substring(startIndex, endIndex + 1);
+        }
         try {
            const parsed = JSON.parse(generatedText);
            setPlaywrightScripts(parsed);
-           parsed.forEach((s: any) => saveToOutput(`${s.id.replace(/\//g, '_')}_script.txt`, s.script));
+           parsed.forEach((s: any) => saveToOutput(`${s.id.split('/').pop()}`, s.script));
         } catch(e) {
            throw new Error("Failed to parse AI output. The model did not return a valid JSON array.");
         }
@@ -285,7 +296,7 @@ Example format:
     const blob = new Blob([script], { type: 'text/plain;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `${id.replace(/\//g, '_')}_script.txt`;
+    link.download = `${id.split('/').pop()}`;
     link.click();
   };
 
@@ -338,13 +349,24 @@ Example format:
             </div>
 
             <div className="input-group">
-              <label className="input-label">Gemini API Key (optional)</label>
+              <label className="input-label">OpenRouter API Key (optional)</label>
               <input 
                 type="password" 
                 className="input-field" 
-                placeholder="Enter Gemini API Key" 
+                placeholder="sk-or-v1-..." 
                 value={modelApiKey}
                 onChange={(e) => setModelApiKey(e.target.value)}
+              />
+            </div>
+
+            <div className="input-group">
+              <label className="input-label">Model Name</label>
+              <input 
+                type="text" 
+                className="input-field" 
+                placeholder="e.g., openai/gpt-3.5-turbo, anthropic/claude-3-haiku" 
+                value={routerModel}
+                onChange={(e) => setRouterModel(e.target.value)}
               />
             </div>
 

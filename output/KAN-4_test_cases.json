@@ -1,29 +1,82 @@
 [
   {
     "id": "TC_POS_01",
-    "summary": "Verify successful action for KAN-4",
-    "steps": "1. Navigate to feature\n2. Perform primary action",
-    "testData": "Valid user credentials, active session",
-    "expectedResult": "Action completes successfully and system state is updated.",
-    "actualResult": "As expected",
-    "status": "Pass"
+    "summary": "Valid user registration with all required fields",
+    "steps": [
+      "Navigate to the registration page",
+      "Enter valid email, password, full name",
+      "Click on 'Create Account' button"
+    ],
+    "testData": "Email: test@example.com, Password: Test123, Full Name: John Doe",
+    "expectedResult": "User account is successfully created and redirected to the home page",
+    "actualResult": "Pending Execution",
+    "status": "Not Run"
+  },
+  {
+    "id": "TC_POS_02",
+    "summary": "Valid user registration with optional fields",
+    "steps": [
+      "Navigate to the registration page",
+      "Enter valid email, password, full name, and optional fields like phone number and address",
+      "Click on 'Create Account' button"
+    ],
+    "testData": "Email: test2@example.com, Password: Test123, Full Name: Jane Smith, Phone Number: 123-456-7890, Address: 123 Main St",
+    "expectedResult": "User account is successfully created with optional fields filled",
+    "actualResult": "Pending Execution",
+    "status": "Not Run"
   },
   {
     "id": "TC_NEG_01",
-    "summary": "Verify error handling for invalid input in KAN-4",
-    "steps": "1. Enter invalid data\n2. Submit",
-    "testData": "Empty fields, invalid characters",
-    "expectedResult": "Appropriate error message is displayed and action is blocked.",
-    "actualResult": "As expected",
-    "status": "Pass"
+    "summary": "Invalid email format during registration",
+    "steps": [
+      "Navigate to the registration page",
+      "Enter invalid email format",
+      "Enter valid password and full name",
+      "Click on 'Create Account' button"
+    ],
+    "testData": "Email: invalidemail, Password: Test123, Full Name: Sarah",
+    "expectedResult": "Error message displayed for invalid email format",
+    "actualResult": "Pending Execution",
+    "status": "Not Run"
   },
   {
-    "id": "TC_EDG_01",
-    "summary": "Verify boundary limit for KAN-4",
-    "steps": "1. Enter maximum allowed characters/value",
-    "testData": "Max length string (255 chars)",
-    "expectedResult": "System handles limit without crashing and truncates or validates correctly.",
-    "actualResult": "As expected",
-    "status": "Pass"
+    "id": "TC_NEG_02",
+    "summary": "Missing required fields during registration",
+    "steps": [
+      "Navigate to the registration page",
+      "Leave email, password, or full name field blank",
+      "Click on 'Create Account' button"
+    ],
+    "testData": "Email: , Password: Test123, Full Name: Alex",
+    "expectedResult": "Error message displayed for missing required fields",
+    "actualResult": "Pending Execution",
+    "status": "Not Run"
+  },
+  {
+    "id": "TC_EDGE_01",
+    "summary": "User registration with maximum character limit for fields",
+    "steps": [
+      "Navigate to the registration page",
+      "Enter max character limit for email, password, and full name fields",
+      "Click on 'Create Account' button"
+    ],
+    "testData": "Email: maxcharacterlimit@example.com, Password: MaxCharacter1234567890, Full Name: Lorem Ipsum",
+    "expectedResult": "User account is successfully created with maximum character limit for fields",
+    "actualResult": "Pending Execution",
+    "status": "Not Run"
+  },
+  {
+    "id": "TC_EDGE_02",
+    "summary": "User registration without accepting terms and conditions",
+    "steps": [
+      "Navigate to the registration page",
+      "Enter valid email, password, full name",
+      "Do not accept the terms and conditions checkbox",
+      "Click on 'Create Account' button"
+    ],
+    "testData": "Email: test3@example.com, Password: Test123, Full Name: Michael",
+    "expectedResult": "Error message displayed for not accepting terms and conditions",
+    "actualResult": "Pending Execution",
+    "status": "Not Run"
   }
 ]

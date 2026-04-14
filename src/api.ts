@@ -17,7 +17,7 @@ export const fetchJiraStory = async (url: string, email: string, token: string, 
   const baseUrl = url.replace(/\/$/, '');
   const jiraUrl = `${baseUrl}/rest/api/3/issue/${storyId}`;
   const auth = btoa(`${email}:${token}`);
-  
+
   const response = await fetch(PROXY_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -39,20 +39,33 @@ export const fetchJiraStory = async (url: string, email: string, token: string, 
   return await response.json();
 };
 
-export const generateContentFromGemini = async (modelApiKey: string, prompt: string) => {
+export const generateContentFromOpenRouter = async (apiKey: string, model: string, prompt: string) => {
+  const modelToUse = model || 'openai/gpt-3.5-turbo';
   const response = await fetch(PROXY_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${modelApiKey}`,
+      url: 'https://openrouter.ai/api/v1/chat/completions',
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      auth: '',
-      data: { contents: [{ parts: [{ text: prompt }] }] }
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        'HTTP-Referer': 'http://localhost:5173', // Optional, for OpenRouter analytics
+        'X-Title': 'Test Generation Center'
+      },
+      data: {
+        model: modelToUse,
+        messages: [{ role: 'user', content: prompt }]
+      }
     }),
   });
 
-  if (!response.ok) throw new Error('AI Generation failed. Please check your API Key.');
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error?.message || 'AI Generation failed via OpenRouter.');
+  }
+  
   const data = await response.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text;
+  return data.choices?.[0]?.message?.content;
 };
+
